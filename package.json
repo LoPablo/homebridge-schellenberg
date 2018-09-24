@@ -1,0 +1,22 @@
+{
+  "name": "homebridge-schellenberg",
+  "version": "1.0.1",
+  "description": "Homebridge Schellenberg Shutter Control",
+  "engines": {
+    "homebridge": ">=0.3.2"
+  },
+  "scripts": {
+    "test": "echo \"Error: no tests\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://lopablo@bitbucket.org/lopablo/homebridge-schellenberg.git"
+  },
+  "author": {
+    "name": "Pascal Hartmann"
+  },
+  "license": "BSD",
+  "keywords": [
+    "homebridge-plugin"
+  ]
+}
