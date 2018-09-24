@@ -9,7 +9,7 @@ from a German company named 'Schellenberg' without asking me.
 
 After the first motors were installed my dad asked me weather it would be easy to integrate the System with Siri and like this my journey and this project began.
 
-The choice between the different tools to make a device/system HomeKit enabled fell on Homebridge, because it seemed quite easy to write a plugin JavaScript and because my parents already
+The choice between the different tools to make a device/system HomeKit enabled fell on Homebridge, because it seemed quite easy to write a plugin in JavaScript and my parents already
 had an instance running on a pi, because Philips decided to only expose original Hue lights to HomeKit and well the Ikea Tradfri bulbs are way cheaper than the ones from Philips.
 
 ## Speaking to the devices
