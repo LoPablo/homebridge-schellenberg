@@ -11,7 +11,7 @@ class SchellenbergPlatform {
         log('SchellenbergPlatform');
         this.log = log;
         this.config = config;
-        this.accessories = [];
+        this.this.accessories = [];
         this.api = api;
         this.homebridgeAccessories = new Map();
         this.deviceAccessories = new Map();

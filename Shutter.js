@@ -90,15 +90,16 @@ class SchellenbergShutter {
 
     shutterDrive() {
         return setInterval(() => {
+            let self = this;
             var preState = this.positionState;
             this.log('preState:' + preState);
             if (this.targetPosition < this.currentPosition || this.targetPosition === 0) {
                 this.positionState = 2;
-                this.currentPosition -= 1;
+
                 this.service.setCharacteristic(Characteristic.PositionState, Characteristic.PositionState.DECREASING);
             } else if (this.targetPosition > this.currentPosition || this.targetPosition === 100) {
                 this.positionState = 1;
-                this.currentPosition += 1;
+
                 this.service.setCharacteristic(Characteristic.PositionState, Characteristic.PositionState.INCREASING);
             } else if (this.targetPosition === this.currentPosition) {
                 this.positionState = 0;
@@ -106,24 +107,28 @@ class SchellenbergShutter {
             }
             if (preState !== this.positionState) {
                 this.log('newState:' + this.positionState);
-                var req = SchellAPI.getDeviceSetMessage(this.platform.config.sessionId, this.inconf.deviceID, this.positionState.toString());
-                SchellAPI.tlsRequest(this.log, this.config.host, this.config.port, req, (data) => {
-                    this.log(data);
+                const req = SchellAPI.getDeviceSetMessage(this.platform.config.sessionId, this.inconf.deviceID, this.positionState.toString());
+                SchellAPI.tlsRequest(this.log, this.config.host, this.config.port, req, (error, data) => {
+                    if (!error) {
+                        if (self.positionState === 2) {
+                            self.currentPosition -= 1;
+                        } else if (self.positionState === 1) {
+                            self.currentPosition += 1;
+                        }
+                        self.service.setCharacteristic(Characteristic.CurrentPosition, self.currentPosition);
+                        if (self.positionState === 0) {
+                            clearInterval(self.localInterval);
+                        } else if ((self.currentPosition === self.targetPosition && self.targetPosition === 100) || (self.currentPosition === self.targetPosition && self.targetPosition === 0)) {
+                            clearInterval(self.localInterval);
+                        } else {
+                            self.log('still running');
+                        }
+                    } else {
+                        self.log(error);
+                    }
                 });
             }
-            this.service.setCharacteristic(Characteristic.CurrentPosition, this.currentPosition);
-            if (this.positionState === 0) {
-                this.log('exit with state');
-                clearInterval(this.localInterval);
-            } else if ((this.currentPosition === this.targetPosition && this.targetPosition === 100) || (this.currentPosition === this.targetPosition && this.targetPosition === 0)) {
-                this.log('exit stateless');
-                clearInterval(this.localInterval);
-            } else {
-                this.log('still running');
-            }
         }, this.runStepShutterTime);
-
-
     }
 }
 
