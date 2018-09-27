@@ -1,54 +1,50 @@
 # homebridge-schellenberg
-My parents had the idea to replace our manual rolling shutters with automatic ones while working on our second living room.
-While we already had a Philips Hue system which was perfectly compatible with Apple HomeKit, I tired to convince my dad to buy
-either KNX or Z-Wave enabled rolling shutters, so it would be relatively easy to integrate them with HomeKit and, what was important to
-my parents, be able to control the Shutters with Siri.
+Homebridge Plugin to connect to the Schellenberg Smart Home system. This plugin is a work in progress, so I guarantee [absolutely nothing](https://g.redditmedia.com/FuqGGUPh2r8D5y9joV5UzJLme-Q5KVUq-SQYaJrVOvE.gif?fm=mp4&mp4-fragmented=false&s=438fcd921c022aae00a9814e6f436dac). 
 
-While my time was consumed by trying to get my Bachelors Degree in the regular time, my dad decided to by a rolling Shutters 
-from a German company named 'Schellenberg' without asking me.
+At the moment only the shutters are supported, but I will be working on more of the devices when I have time and am able to buy the thermostat, the switch or the window handle.
 
-After the first motors were installed my dad asked me weather it would be easy to integrate the System with Siri and like this my journey and this project began.
-
-The choice between the different tools to make a device/system HomeKit enabled fell on Homebridge, because it seemed quite easy to write a plugin in JavaScript and my parents already
-had an instance running on a pi, because Philips decided to only expose original Hue lights to HomeKit and well the Ikea Tradfri bulbs are way cheaper than the ones from Philips.
-
-## Speaking to the devices
-Schellenberg Shutters can be used as a standalone solution. You can either only bye the motors and a remote control to control the individual motors or additionally bye the 'SmartHome Gateway'.
-
-### Direct commuication
-So in a Thread which i am no longer able to find (it was about the Schellenberg Window Handle) someone found out that Schellenberg's system was using a
-rolling code or similar while communicating between the devices. So speaking to a device directly seamed to be no option. 
-
-### Wiring a remote
-Second thought was to disassemble the remotes and just wire the buttons to the gpio of the pi. Well yeah that would be a really janky solution, so I only
-kept this idea as a last resort.
-
-### Using the Gateway and it's protocol
-Because the other ideas were either too janky or there was no way I would be able to find out a way to speak to one of the
-devices in a reasonable time period, I convinced my dad to buy the gateway and tried to reverse engineer the API / it's protocol.
-
-## Reverse engineering the protocol
-### First attempts
-I already tried to figure out the apis of some apps, for example of one of the apps for the company I work for just for the lulz. So I tried what I did with the apps before.
-Installed the Schellenberg Smart Home App on an Android device and captured what the app (as a client) sent to the server (in this case the gateway). Turns out it uses a ssl/tls
-connection which was not being captured by the app i used to capture the traffic. Tried to find some other ways to sniff the connection, like ARP-Spoofing etc. but all of them didn't work either (unfortunately the android device was
-the on of my brother so I wasn't able to root it or something similar).
-
-### Decompiling the first
-The next thing I tried was to get the App to tell me it's secret by decompiling it. Turns out it was a Cordava App, so it consists mostly of JavaScript Code. And well way too much of that.
- 
-![Too many code lines to look at](https://i.imgur.com/QlrBL2m.png)
-
-The Code also mostly consists of variables and functions only named 'a' or 'zu','p', 'tz' etc. and there was no way i was able to look at all of that and find the right lines. Well at least I found an easter egg
-which helped me out later.
-
-### Recompiling
-Next step was changing the Manifest of the app to allow remote debugging it with Chrome which is possible because the Cordava App is literally a HTML page shown in a Chrome window with JavaScript able to use Android/iOS/WindowsPhone system functions.
-
-This wasn't successfully either because it only led me to more JavaScript with Angular which wasn't helpful at all. So last way out: Google.
-
-### Let's search 
-more to come
-
-
-
+## How to use
+### 1. Extract certificate
+The gateway can only be adressed via a TLS connection on which JSON messages are passed to each other. The Gateway-Server uses a self signed certificate. To communicate via the 
+nodejs TLS socket we need the rootCA which signed the server certificate. The extractCert.java file can be used to extract the certificate from a Java SSLSocket. I am not shure if it is a good idea to upload the certificate to this git, so I won't. Also I am not shure if all of the root certificates are the same, since i only own one gateway to test with.
+### 2. sessionID
+The gateway normally uses a username and password to determine user rights. However this login data are used to create a session key which seems to be usable until the gateway is reset. The getSessionKey.java can be used to get one of the session keys. If you don't know how to compile the Java files, you are doomed (unless you are able to use DuckDuckGo or Google etc.). The session key will be used in the config later.
+### 2. Config
+The config.json file needs some work. The always needed keys are 'sessionID', 'host' and 'port'. Optionally you can use the 'rollingTimes' key to set custom up/down times to show the running status in the Home App and to be able to set the shutters to 50% (for example). The standard time used when no explicit time is stated is 30sec from 0% to 100%.
+```json
+{
+	"bridge": {
+		...
+	},
+	"platforms": [
+		{
+			"platform" : "SchellenbergPlatform",
+			"sessionId" : "session key goes here",
+			"host" : "ip goes here",
+			"languageTranslationVersion" : 270,
+			"compatibilityConfigurationVersion" : 340,
+			"port" : 4300,
+			"rollingTimes": [
+				{
+					"deviceID": 14071,
+					"time": 19750
+				},
+				{
+					"deviceID": 10153,
+					"time": 15600
+				},
+				{
+					"deviceID": 14050,
+					"time": 19750
+				},
+				{
+					"deviceID": 15162,
+					"time": 29000
+				}
+			]
+		}
+	],
+	"accessories": []
+}
+```
+Example Config

@@ -11,7 +11,7 @@ class SchellAPI {
             'compatibilityConfigurationVersion': compatConfigVersion,
             'languageTranslationVersion': translationVersion
         };
-        return JSON.stringify(_result)
+        return JSON.stringify(_result);
     }
 
     static getDeviceSetMessage(session, deviceID, value) {
@@ -24,21 +24,22 @@ class SchellAPI {
         return JSON.stringify(_result)
     }
 
-    static checkAndParseMessage(data, callback) {
+    static checkAndParseMessage(log, data, callback) {
         if (data) {
             try {
                 let parse = JSON.parse(data);
                 if (parse.hasOwnProperty('responseCode')) {
                     if (parse.responseCode === 1) {
-                        callback(null, parse);
+                        callback(parse);
                     }
                 }
             } catch (err) {
-                callback(err, null);
+                log('Error parsing JSON');
+                callback(null);
             }
         } else {
-            const err = new Error('missing data');
-            callback(err, null);
+            log('missing data');
+            callback(null);
         }
     }
 
@@ -47,13 +48,15 @@ class SchellAPI {
         const options = {
             host: host,
             port: port,
-            ca: fs.readFileSync('./CA.pem'),
+            ca: fs.readFileSync('/Volumes/Daten/Dokumente/Projekte/homebridge-schellenberg/CA.pem'),
             rejectUnauthorized: false,
             checkServerIdentity: function (host, cert) {
             }
         };
         const socket = tls.connect(options, () => {
-            log('client connected', socket.authorized ? 'authorized' : 'unauthorized')
+            if (!socket.authorized) {
+                log('client connected unauthorized');
+            }
         });
         socket.setEncoding('utf8');
         socket.on('data', (data) => {
@@ -61,14 +64,14 @@ class SchellAPI {
                 chunk += data;
             } else {
                 chunk += data;
-                this.checkAndParseMessage(chunk, callback);
+                this.checkAndParseMessage(log, chunk, callback);
             }
         });
         socket.on('error', (err) => {
-            callback(err, null)
+            callback(null);
         });
         socket.on('end', () => {
-            log('End TLS connection')
+            log('End TLS connection');
         });
         socket.write(dataReq);
         socket.write('\n');

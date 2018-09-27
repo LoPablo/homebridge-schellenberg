@@ -1,4 +1,3 @@
-'use strict';
 
 let PlatformAccessory;
 let Accessory;
@@ -63,71 +62,59 @@ class SchellenbergShutter {
 
         getOrAddCharacteristic(this.service, Characteristic.CurrentPosition)
             .on('get', (callback) => {
-                this.log("getCurrentPosition:" + this.currentPosition);
                 callback(null, this.currentPosition);
             })
             .on('set', (value, callback) => {
-                this.log("setCurrentPosition: to " + value);
                 callback(null, this.currentPosition);
             });
 
         getOrAddCharacteristic(this.service, Characteristic.TargetPosition)
             .on('get', (callback) => {
-                this.log("getTargetPosition:" + this.currentPosition);
                 callback(null, this.currentPosition);
             })
             .on('set', (value, callback) => {
-                this.log("setTargetPosition: to " + value);
                 this.targetPosition = value;
                 if (this.localInterval) {
                     clearInterval(this.localInterval);
+                    self.platform.refreshBlock = false;
                 }
                 this.localInterval = this.shutterDrive();
                 callback(null, this.currentPosition);
-            })
-
+            });
     }
 
     shutterDrive() {
         return setInterval(() => {
+            this.platform.refreshBlock = true;
             let self = this;
-            var preState = this.positionState;
-            this.log('preState:' + preState);
+            const preState = this.positionState;
             if (this.targetPosition < this.currentPosition || this.targetPosition === 0) {
                 this.positionState = 2;
-
                 this.service.setCharacteristic(Characteristic.PositionState, Characteristic.PositionState.DECREASING);
             } else if (this.targetPosition > this.currentPosition || this.targetPosition === 100) {
                 this.positionState = 1;
-
                 this.service.setCharacteristic(Characteristic.PositionState, Characteristic.PositionState.INCREASING);
             } else if (this.targetPosition === this.currentPosition) {
                 this.positionState = 0;
                 this.service.setCharacteristic(Characteristic.PositionState, Characteristic.PositionState.STOPPED);
             }
             if (preState !== this.positionState) {
-                this.log('newState:' + this.positionState);
                 const req = SchellAPI.getDeviceSetMessage(this.platform.config.sessionId, this.inconf.deviceID, this.positionState.toString());
                 SchellAPI.tlsRequest(this.log, this.config.host, this.config.port, req, (error, data) => {
-                    if (!error) {
-                        if (self.positionState === 2) {
-                            self.currentPosition -= 1;
-                        } else if (self.positionState === 1) {
-                            self.currentPosition += 1;
-                        }
-                        self.service.setCharacteristic(Characteristic.CurrentPosition, self.currentPosition);
-                        if (self.positionState === 0) {
-                            clearInterval(self.localInterval);
-                        } else if ((self.currentPosition === self.targetPosition && self.targetPosition === 100) || (self.currentPosition === self.targetPosition && self.targetPosition === 0)) {
-                            clearInterval(self.localInterval);
-                        } else {
-                            self.log('still running');
-                        }
-                    } else {
-                        self.log(error);
-                    }
+
                 });
             }
+            if ((self.positionState === 0) || (self.currentPosition === self.targetPosition && self.targetPosition === 100) || (self.currentPosition === self.targetPosition && self.targetPosition === 0)) {
+                self.platform.refreshBlock = false;
+                clearInterval(self.localInterval);
+            } else if (self.positionState === 2) {
+                self.currentPosition -= 1;
+            } else if (self.positionState === 1) {
+                self.currentPosition += 1;
+            } else {
+                self.log('still running');
+            }
+            self.service.setCharacteristic(Characteristic.CurrentPosition, self.currentPosition);
         }, this.runStepShutterTime);
     }
 }
