@@ -87,6 +87,7 @@ class SchellenbergShutter {
                 callback(null, this.reachable);
             })
             .on('set', (value, callback) => {
+                this.reachable = value;
                 callback();
             });
     }
