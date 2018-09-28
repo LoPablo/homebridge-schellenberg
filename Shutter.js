@@ -84,11 +84,10 @@ class SchellenbergShutter {
 
         getOrAddCharacteristic(this.service, Characteristic.StatusFault)
             .on('get', (callback) => {
-                this.log('check reachi');
                 callback(null, this.reachable);
             })
             .on('set', (value, callback) => {
-                this.log('set reachi');
+                callback();
             });
     }
 
@@ -109,7 +108,7 @@ class SchellenbergShutter {
             }
             if (preState !== this.positionState) {
                 const req = SchellAPI.getDeviceSetMessage(this.platform.config.sessionId, this.inconf.deviceID, this.positionState.toString());
-                SchellAPI.tlsRequest(this.log, this.config.host, this.config.port, req, (error, data) => {
+                SchellAPI.tlsRequest(this.log, this.platform.config.host, this.platform.config.port, this.platform.config.caPath, req, (error, data) => {
 
                 });
             }

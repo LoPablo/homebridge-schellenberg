@@ -28,7 +28,7 @@ class SchellenbergPlatform {
         this.compatibilityConfigurationVersion = this.compatibilityConfigurationVersion || 0;
         this.log('Fetching Schellenberg devices.');
         const req = SchellAPI.getAllNewInfosMessage(this.config.sessionId, this.timestamp, this.compatibilityConfigurationVersion, this.languageTranslationVersion);
-        SchellAPI.tlsRequest(this.log, this.config.host, this.config.port, req, (data, err) => {
+        SchellAPI.tlsRequest(this.log, this.config.host, this.config.port, this.config.caPath, req, (data, err) => {
             if (err) {
                 this.log(err.toString());
                 this.unreachable();
@@ -89,7 +89,7 @@ class SchellenbergPlatform {
         let self = this;
         if (!this.refreshBlock) {
             const req = SchellAPI.getAllNewInfosMessage(this.config.sessionId, this.timestamp, this.compatibilityConfigurationVersion, this.languageTranslationVersion);
-            SchellAPI.tlsRequest(this.log, this.config.host, this.config.port, req, (data, err) => {
+            SchellAPI.tlsRequest(this.log, this.config.host, this.config.port, this.config.caPath, req, (data, err) => {
                 if (err) {
                     this.log(err.toString());
                     clearInterval(this.refreshInt);

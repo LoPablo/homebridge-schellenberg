@@ -52,14 +52,14 @@ class SchellAPI {
         }
     }
 
-    static tlsRequest(log, host, port, dataReq, callback) {
+    static tlsRequest(log, host, port, caPath, dataReq, callback) {
         let chunk = '';
         var timoutHandle = null;
         const options = {
             timeout: 10000,
             host: host,
             port: port,
-            ca: fs.readFileSync('/Volumes/Daten/Dokumente/Projekte/homebridge-schellenberg/CA.pem'),
+            ca: fs.readFileSync(caPath),
             rejectUnauthorized: false,
             checkServerIdentity: function (host, cert) {
             }
