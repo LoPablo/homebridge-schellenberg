@@ -15,7 +15,6 @@ class SchellenbergPlatform {
         Service = api.hap.Service;
         Characteristic = api.hap.Characteristic;
         UUIDGen = api.hap.uuid;
-
         let self = this;
         this.log = log;
         this.config = config;
@@ -29,7 +28,11 @@ class SchellenbergPlatform {
         this.compatibilityConfigurationVersion = this.compatibilityConfigurationVersion || 0;
         this.log('Fetching Schellenberg devices.');
         const req = SchellAPI.getAllNewInfosMessage(this.config.sessionId, this.timestamp, this.compatibilityConfigurationVersion, this.languageTranslationVersion);
-        SchellAPI.tlsRequest(this.log, this.config.host, this.config.port, req, (data) => {
+        SchellAPI.tlsRequest(this.log, this.config.host, this.config.port, req, (data, err) => {
+            if (err) {
+                this.log(err.toString());
+                return;
+            }
             if (data.hasOwnProperty('response')) {
                 if (data.response.hasOwnProperty('newDeviceInfos')) {
                     for (let j = 0; j < data.response.newDeviceInfos.length; j++) {
@@ -42,16 +45,18 @@ class SchellenbergPlatform {
             } else {
                 self.log.debug('Missing response Key');
             }
-        });
-        this.api.on('didFinishLaunching', () => {
-            this.log.debug('didFinishLaunching');
             this.refreshInt = setInterval(() => {
                 this.refreshStat();
             }, 7000);
+            setTimeout(() => {
+                this.setRollingTime()
+            }, 2000);
         });
-        setTimeout(() => {
-            this.setRollingTime()
-        }, 7000);
+        this.api.on('didFinishLaunching', () => {
+            this.log.debug('didFinishLaunching');
+
+        });
+
     }
 
     setRollingTime() {
@@ -74,7 +79,12 @@ class SchellenbergPlatform {
         let self = this;
         if (!this.refreshBlock) {
             const req = SchellAPI.getAllNewInfosMessage(this.config.sessionId, this.timestamp, this.compatibilityConfigurationVersion, this.languageTranslationVersion);
-            SchellAPI.tlsRequest(this.log, this.config.host, this.config.port, req, (data) => {
+            SchellAPI.tlsRequest(this.log, this.config.host, this.config.port, req, (data, err) => {
+                if (err) {
+                    this.log(err.toString());
+                    clearInterval(this.refreshInt);
+                    return;
+                }
                 if (data.hasOwnProperty('response')) {
                     if (data.response.hasOwnProperty('currentTimestamp')) {
                         self.timestamp = data.response.currentTimestamp;

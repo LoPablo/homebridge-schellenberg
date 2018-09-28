@@ -24,28 +24,37 @@ class SchellAPI {
         return JSON.stringify(_result)
     }
 
-    static checkAndParseMessage(log, data, callback) {
-        if (data) {
-            try {
-                let parse = JSON.parse(data);
-                if (parse.hasOwnProperty('responseCode')) {
-                    if (parse.responseCode === 1) {
-                        callback(parse);
-                    }
-                }
-            } catch (err) {
-                log('Error parsing JSON');
-                callback(null);
-            }
+    static checkAndParseMessage(log, data, callback, err) {
+        if (err) {
+            callback(null, err);
         } else {
-            log('missing data');
-            callback(null);
+            if (data) {
+                try {
+                    let parse = JSON.parse(data);
+                    if (parse.hasOwnProperty('responseCode')) {
+                        if (parse.responseCode === 1) {
+                            callback(parse, null);
+                        } else if (parse.responseCode === 2) {
+
+                        } else if (parse.responseCode === 2) {
+
+                        }
+                    } else {
+                        callback(null, new Error('Data response was missing response Code'));
+                    }
+                } catch (e) {
+                    callback(null, e);
+                }
+            } else {
+                callback(null, new Error('Data response was empty but no Error occured'));
+            }
         }
     }
 
     static tlsRequest(log, host, port, dataReq, callback) {
         let chunk = '';
         const options = {
+            timeout: 3000,
             host: host,
             port: port,
             ca: fs.readFileSync('/Volumes/Daten/Dokumente/Projekte/homebridge-schellenberg/CA.pem'),
@@ -55,9 +64,12 @@ class SchellAPI {
         };
         const socket = tls.connect(options, () => {
             if (!socket.authorized) {
-                log('client connected unauthorized');
+                log.debug('client connected unauthorized');
+            } else {
+                log.debug('client connected authorized');
             }
         });
+
         socket.setEncoding('utf8');
         socket.on('data', (data) => {
             if (data.indexOf('\n') < 0) {
@@ -67,13 +79,22 @@ class SchellAPI {
                 this.checkAndParseMessage(log, chunk, callback);
             }
         });
+        socket.on('timeout', () => {
+            this.checkAndParseMessage(log, null, callback, new Error('Connection timeout!' + options.timeout / 1000 + 'seconds expired'));
+            socket.destroy();
+        });
         socket.on('error', (err) => {
-            callback(null);
+            this.checkAndParseMessage(log, null, callback, err);
         });
         socket.on('end', () => {
             log('End TLS connection');
         });
         socket.write(dataReq);
+        log.debug('requested: ' + dataReq.toString());
+        setTimeout(() => {
+            this.checkAndParseMessage(log, null, callback, new Error('Data timeout!' + options.timeout / 1000 + 'seconds expired'));
+            socket.destroy();
+        }, options.timeout);
         socket.write('\n');
     }
 
