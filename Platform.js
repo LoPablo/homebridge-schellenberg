@@ -33,6 +33,8 @@ class SchellenbergPlatform {
                 this.log(err.toString());
                 this.unreachable();
                 return;
+            } else {
+                this.reachable();
             }
             if (data.hasOwnProperty('response')) {
                 if (data.response.hasOwnProperty('newDeviceInfos')) {
@@ -85,6 +87,15 @@ class SchellenbergPlatform {
         });
     }
 
+    reachable() {
+        this.homebridgeAccessories.forEach((value, key) => {
+            value.getService(Service.WindowCovering).setCharacteristic(Characteristic.StatusFault, 0);
+        });
+        this.deviceAccessories.forEach((value, key) => {
+            value.reachable = 0;
+        });
+    }
+
     refreshStat() {
         let self = this;
         if (!this.refreshBlock) {
@@ -92,9 +103,10 @@ class SchellenbergPlatform {
             SchellAPI.tlsRequest(this.log, this.config.host, this.config.port, this.config.caPath, req, (data, err) => {
                 if (err) {
                     this.log(err.toString());
-                    clearInterval(this.refreshInt);
                     this.unreachable();
                     return;
+                } else {
+                    this.reachable();
                 }
                 if (data.hasOwnProperty('response')) {
                     if (data.response.hasOwnProperty('currentTimestamp')) {
