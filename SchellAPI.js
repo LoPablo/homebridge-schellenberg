@@ -26,6 +26,7 @@ class SchellAPI {
 
     static checkAndParseMessage(log, data, callback, err) {
         if (err) {
+            log.debug('Err input checkAndParse');
             callback(null, err);
         } else {
             if (data) {
@@ -53,8 +54,9 @@ class SchellAPI {
 
     static tlsRequest(log, host, port, dataReq, callback) {
         let chunk = '';
+        var timoutHandle = null;
         const options = {
-            timeout: 3000,
+            timeout: 10000,
             host: host,
             port: port,
             ca: fs.readFileSync('/Volumes/Daten/Dokumente/Projekte/homebridge-schellenberg/CA.pem'),
@@ -69,14 +71,19 @@ class SchellAPI {
                 log.debug('client connected authorized');
             }
         });
-
         socket.setEncoding('utf8');
         socket.on('data', (data) => {
             if (data.indexOf('\n') < 0) {
+                clearTimeout(timoutHandle);
                 chunk += data;
+                timoutHandle = setTimeout(() => {
+                    this.checkAndParseMessage(log, null, callback, new Error('Data timeout!' + options.timeout / 1000 + 'seconds expired'));
+                    socket.destroy();
+                }, options.timeout);
             } else {
+                clearTimeout(timoutHandle);
                 chunk += data;
-                this.checkAndParseMessage(log, chunk, callback);
+                this.checkAndParseMessage(log, chunk, callback, null);
             }
         });
         socket.on('timeout', () => {
@@ -91,7 +98,7 @@ class SchellAPI {
         });
         socket.write(dataReq);
         log.debug('requested: ' + dataReq.toString());
-        setTimeout(() => {
+        timoutHandle = setTimeout(() => {
             this.checkAndParseMessage(log, null, callback, new Error('Data timeout!' + options.timeout / 1000 + 'seconds expired'));
             socket.destroy();
         }, options.timeout);

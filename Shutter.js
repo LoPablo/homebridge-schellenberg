@@ -1,4 +1,3 @@
-
 let PlatformAccessory;
 let Accessory;
 let Service;
@@ -28,6 +27,7 @@ class SchellenbergShutter {
         this.inconf = inconf;
         this.runStepShutterTime = 300;
         this.localInterval = null;
+        this.reachable = 0;
         this.targetPosition = 100;
         this.currentPosition = 100;
         this.positionState = 0;
@@ -80,6 +80,15 @@ class SchellenbergShutter {
                 }
                 this.localInterval = this.shutterDrive();
                 callback(null, this.currentPosition);
+            });
+
+        getOrAddCharacteristic(this.service, Characteristic.StatusFault)
+            .on('get', (callback) => {
+                this.log('check reachi');
+                callback(null, this.reachable);
+            })
+            .on('set', (value, callback) => {
+                this.log('set reachi');
             });
     }
 
