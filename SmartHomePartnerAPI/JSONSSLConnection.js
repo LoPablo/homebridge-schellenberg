@@ -4,11 +4,16 @@ const fs = require('fs');
 const tls = require('tls');
 
 class JSONSSLConnection {
-    constructor(log, host, port, caPath) {
-        this.answerQueue = [];
+    constructor(host, port, caPath, log) {
+        this.supQueue = [];
         this.requestQueue = [];
+        this.currentRequest = null;
         this.socket = null;
-        this.log = log;
+        if (log) {
+            this.log = log;
+        } else {
+            this.log = console.log;
+        }
         this.host = host;
         this.port = port;
         this.chunk = '';
@@ -26,7 +31,7 @@ class JSONSSLConnection {
         });
     }
 
-    async checkSocketConnection(callback) {
+    checkSocketConnection(callback) {
         const self = this;
         if (!this.socket) {
             this.log('no socket creating new one');
@@ -48,7 +53,7 @@ class JSONSSLConnection {
                     self.chunk += data;
                 } else {
                     self.chunk += data;
-                    this.returnAndCallNext(this.chunk, null);
+                    self.returnAndCallNext(self.chunk, null);
                     self.chunk = '';
                 }
             });
@@ -62,6 +67,8 @@ class JSONSSLConnection {
             this.socket.on('end', () => {
                 this.requestQueue = [];
                 this.answerQueue = [];
+                this.socket.destroy();
+                this.socket = null;
             });
         } else {
             if (callback) {
@@ -70,11 +77,13 @@ class JSONSSLConnection {
         }
     }
 
+
     returnAndCallNext(data) {
-        if (this.answerQueue.length > 0) {
-            const nextCallback = this.answerQueue.shift();
+        if (this.supQueue.length > 0) {
+            const nextCallback = this.supQueue.shift().promiseCallback;
             nextCallback(data);
         }
+        this.currentRequest = null;
         this.callNext();
     }
 
@@ -89,23 +98,55 @@ class JSONSSLConnection {
             const nextRequest = self.requestQueue.shift();
             self.log(nextRequest);
             self.checkSocketConnection();
+            self.startNextTimeout();
+            self.currentRequest = nextRequest;
             self.socket.write(nextRequest);
             self.socket.write('\n');
             self.log('sent next Request')
         })();
     }
 
+    startNextTimeout() {
+        this.log('started next Timeout for ' + this.supQueue[0].request);
+        this.supQueue[0].timeoutHandle = setTimeout(this.supQueue[0].timeoutCallback, 2000);
+    }
+
     disconnectSocketConnection() {
+        this.supQueue = [];
         this.requestQueue = [];
-        this.answerQueue = [];
         this.socket.destroy();
         this.socket = null;
     }
 
-    newRequest(reqData, callback) {
-        this.answerQueue.push(callback);
+    newRequest(reqData) {
+        const self = this;
         this.requestQueue.push(reqData);
         this.log('pushed new Request');
+        return new Promise((resolve, reject) => {
+            const queobj = {
+                'request': reqData,
+                'promiseCallback': null,
+                'timeoutCallback': null,
+                'timeoutHandle': null
+            };
+            const promCallback = (data) => {
+                clearTimeout(queobj.timeoutHandle);
+                resolve(data);
+            };
+            const timeCallback = (data) => {
+                self.log('timeout popped');
+                self.chunk = '';
+                self.supQueue.forEach(function (item, index, object) {
+                    if (item === queobj) {
+                        object.splice(index, 1);
+                    }
+                });
+                reject('no answer 2 seconds after request');
+            };
+            queobj.promiseCallback = promCallback;
+            queobj.timeoutCallback = timeCallback;
+            self.supQueue.push(queobj);
+        });
     }
 }
 
