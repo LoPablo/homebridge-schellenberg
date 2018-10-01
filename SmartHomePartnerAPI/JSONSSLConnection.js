@@ -58,8 +58,7 @@ class JSONSSLConnection {
                 }
             });
             this.socket.on('timeout', () => {
-
-                this.socket.destroy();
+                this.returnAndCallNext(chunk, err);
             });
             this.socket.on('error', (err) => {
                 this.returnAndCallNext(chunk, err);
@@ -77,7 +76,6 @@ class JSONSSLConnection {
         }
     }
 
-
     returnAndCallNext(data) {
         if (this.supQueue.length > 0) {
             const nextCallback = this.supQueue.shift().promiseCallback;
@@ -86,6 +84,7 @@ class JSONSSLConnection {
         this.currentRequest = null;
         this.callNext();
     }
+
 
     callNext() {
         this.log('callNext');
@@ -124,6 +123,7 @@ class JSONSSLConnection {
         this.log('pushed new Request');
         return new Promise((resolve, reject) => {
             const queobj = {
+                'normalReq': true,
                 'request': reqData,
                 'promiseCallback': null,
                 'timeoutCallback': null,

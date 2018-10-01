@@ -18,5 +18,9 @@
   "license": "BSD",
   "keywords": [
     "homebridge-plugin"
-  ]
+  ],
+  "dependencies": {
+    "base-64": "^0.1.0",
+    "js-base64": "^2.4.9"
+  }
 }

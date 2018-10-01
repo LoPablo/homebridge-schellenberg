@@ -36,12 +36,12 @@ class RequestFactory {
         return JSON.stringify(_result)
     }
 
-    static getloginMessage(userName, digest, cSymbol, shcVersion, shApiVersion) {
+    static getLoginMessage(userName, digest, cSymbol, shcVersion, shApiVersion) {
         const _result = {
             'command': 'login',
             'username': userName,
             'digest': digest,
-            'cSymbol': cSymbol,
+            'cSymbol': cSymbol + 'i',
             'shcVersion': shcVersion,
             'shApiVersion': shApiVersion,
         };
