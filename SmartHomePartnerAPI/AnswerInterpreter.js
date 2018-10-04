@@ -49,29 +49,52 @@ class AnswerInterpreter {
     }
 
     parseAndStoreNewInfos(data) {
-        this.parseAndCheck(data);
-        if (data.hasOwnProperty('response')) {
-            if (data.response.hasOwnProperty('currentTimestamp')) {
-                if (data.response.hasOwnProperty('newDeviceInfos')) {
-                    this.parseNewDeviceInfos(data.response.newDeviceInfos);
-                }
-                if (data.response.hasOwnProperty('newDeviceValues')) {
-                    this.parseNewDeviceValues(data.response.newDeviceValues);
-                }
-            } else {
-                throw new Error('failed missing keys');
+        let parse = this.parseAndCheck(data);
+        if (parse.hasOwnProperty('response')) {
+            if (parse.response.hasOwnProperty('currentTimestamp')) {
+                this.dataStore.timestamp = parse.response.currentTimestamp;
+            }
+            if (parse.response.hasOwnProperty('newDeviceInfos')) {
+                this.parseAndStoreNewDeviceInfos(parse.response.newDeviceInfos);
+            }
+            if (parse.response.hasOwnProperty('newDeviceValues')) {
+                this.parseAndStoreNewDeviceValues(parse.response.newDeviceValues);
+            }
+            if (parse.response.hasOwnProperty('newLanguageTranslation')) {
+                this.parseAndStoreNewLanguageTraslation(parse.response.newLanguageTranslation);
             }
         } else {
             throw new Error('failed missing keys');
         }
     }
 
-    parseNewDeviceInfos(data) {
+    parseAndStoreNewDeviceInfos(data) {
+        if (data.length > 0) {
+            for (let i = 0; i <= data.length; i++) {
+                if (data[i].hasOwnProperty('deviceID')) {
+                    this.dataStore.addDevice(data[i].deviceID, data[i], false);
+                }
+            }
+        }
+    }
+
+    parseAndStoreNewDeviceValues(data) {
 
     }
 
-    parseNewDeviceValues(data) {
-
+    parseAndStoreNewLanguageTraslation(data) {
+        if (data.hasOwnProperty('languageTranslationVersion')) {
+            this.dataStore.languageTranslationVersion = data.languageTranslationVersion;
+        }
+        if (data.hasOwnProperty('newTranslatedStrings')) {
+            if (data.newTranslatedStrings.length > 0) {
+                for (let i = 0; i <= data.newTranslatedStrings.length; i++) {
+                    if (data.newTranslatedStrings[i].hasOwnProperty('key') && data.newTranslatedStrings[i].hasOwnProperty('value')) {
+                        this.dataStore.addLanguageTranslation(data.newTranslatedStrings[i].key, data.newTranslatedStrings[i].value);
+                    }
+                }
+            }
+        }
     }
 
 }
