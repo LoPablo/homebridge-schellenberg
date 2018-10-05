@@ -55,9 +55,7 @@ class SmartHomeAPI {
 
             })
             .then((loginResponse) => {
-                self.log(loginResponse);
                 let loginParse = self.interpreter.parseLogin(loginResponse);
-                self.log(loginParse);
                 self.deviceInfo = {
                     "hardware": loginParse.hardware,
                     "macAddress": loginParse.MacAddress,
@@ -85,7 +83,7 @@ class SmartHomeAPI {
                 self.interpreter.parseAndStoreNewInfos(data);
             })
             .catch((err) => {
-
+                self.log(err);
             });
     }
 

@@ -2,6 +2,7 @@ class SmartHomeDataStorage {
     constructor() {
         this.devices = new Map();
         this.languageTranslation = new Map();
+        this.compatibilityConfiguration = new Map();
 
         this.timestamp = 0;
         this.languageTranslationVersion = 0;
@@ -33,6 +34,10 @@ class SmartHomeDataStorage {
 
     addLanguageTranslation(languageKey, translation) {
         this.languageTranslation.set(languageKey, translation);
+    }
+
+    addCompatibilityConfiguration(system, compatibleDevices) {
+        this.compatibilityConfiguration.set(system, compatibleDevices);
     }
 
     removeLanguageTranslation(languageKey) {
