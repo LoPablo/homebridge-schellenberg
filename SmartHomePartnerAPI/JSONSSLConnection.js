@@ -6,7 +6,6 @@ const tls = require('tls');
 class JSONSSLConnection {
     constructor(host, port, caPath, log) {
         this.supQueue = [];
-        this.requestQueue = [];
         this.currentRequest = null;
         this.socket = null;
         if (log) {
@@ -24,6 +23,8 @@ class JSONSSLConnection {
             ca: fs.readFileSync(caPath),
             rejectUnauthorized: false,
             checkServerIdentity: function (host, cert) {
+                console.log(host);
+                console.log(cert);
             }
         };
         this.checkSocketConnection(() => {
@@ -64,8 +65,7 @@ class JSONSSLConnection {
                 this.returnAndCallNext(chunk, err);
             });
             this.socket.on('end', () => {
-                this.requestQueue = [];
-                this.answerQueue = [];
+                this.supQueue = [];
                 this.socket.destroy();
                 this.socket = null;
             });
@@ -87,40 +87,33 @@ class JSONSSLConnection {
 
 
     callNext() {
-        this.log('callNext');
         const self = this;
         (async function loop() {
-            self.log('loop created');
-            while (self.requestQueue.length < 1) {
-                await new Promise(resolve => setTimeout(resolve, 1000));
+            while (self.supQueue.length < 1) {
+                await new Promise(resolve => setTimeout(resolve, 250));
             }
-            const nextRequest = self.requestQueue.shift();
+            const nextRequest = self.supQueue[0].request;
             self.log(nextRequest);
             self.checkSocketConnection();
             self.startNextTimeout();
             self.currentRequest = nextRequest;
             self.socket.write(nextRequest);
             self.socket.write('\n');
-            self.log('sent next Request')
         })();
     }
 
     startNextTimeout() {
-        this.log('started next Timeout for ' + this.supQueue[0].request);
         this.supQueue[0].timeoutHandle = setTimeout(this.supQueue[0].timeoutCallback, 2000);
     }
 
     disconnectSocketConnection() {
         this.supQueue = [];
-        this.requestQueue = [];
         this.socket.destroy();
         this.socket = null;
     }
 
     newRequest(reqData) {
         const self = this;
-        this.requestQueue.push(reqData);
-        this.log('pushed new Request');
         return new Promise((resolve, reject) => {
             const queobj = {
                 'normalReq': true,
