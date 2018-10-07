@@ -23,8 +23,7 @@ class JSONSSLConnection {
             ca: fs.readFileSync(caPath),
             rejectUnauthorized: false,
             checkServerIdentity: function (host, cert) {
-                console.log(host);
-                console.log(cert);
+
             }
         };
         this.checkSocketConnection(() => {
@@ -90,7 +89,7 @@ class JSONSSLConnection {
         const self = this;
         (async function loop() {
             while (self.supQueue.length < 1) {
-                await new Promise(resolve => setTimeout(resolve, 250));
+                await new Promise(resolve => setTimeout(resolve, 100));
             }
             const nextRequest = self.supQueue[0].request;
             self.log(nextRequest);

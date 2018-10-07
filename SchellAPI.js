@@ -1,6 +1,6 @@
 const fs = require('fs');
 const tls = require('tls');
-
+const events = require('events');
 
 class SchellAPI {
     static getAllNewInfosMessage(session, timestamp, compatConfigVersion, translationVersion) {

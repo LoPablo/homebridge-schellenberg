@@ -3,6 +3,7 @@ const RequestFactory = require("./RequestFactory");
 const LoginHelper = require("./LoginHelper");
 const AnswerInterpreter = require("./AnswerInterpreter");
 const SmartHomeDataStorage = require("./SmartHomeDataStorage");
+const events = require('events');
 
 class SmartHomeAPI {
     constructor(host, port, username, password, caPath, cSymbol, shcVersion, shApiVersion, log) {
@@ -21,7 +22,8 @@ class SmartHomeAPI {
             this.log = console.log;
         }
 
-        this.dataStore = new SmartHomeDataStorage();
+        this.eventEmitter = new events.EventEmitter();
+        this.dataStore = new SmartHomeDataStorage(this.eventEmitter);
         this.interpreter = new AnswerInterpreter(this.dataStore);
         this.deviceInfo = null;
         this.localServerTimeLogin = null;
@@ -85,10 +87,6 @@ class SmartHomeAPI {
             .catch((err) => {
                 self.log(err);
             });
-    }
-
-    getDevicesInfos() {
-
     }
 
     getDevice(deviceID) {

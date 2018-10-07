@@ -77,7 +77,6 @@ class AnswerInterpreter {
                 this.parseAndStoreNewDeviceInfos(parse.response.newDeviceInfos);
             }
             if (parse.response.hasOwnProperty('newDeviceValues')) {
-                console.log(parse.response.newDeviceValues);
                 this.parseAndStoreNewDeviceValues(parse.response.newDeviceValues);
             }
             if (parse.response.hasOwnProperty('newLanguageTranslation')) {
@@ -104,8 +103,7 @@ class AnswerInterpreter {
                 if (data[i].hasOwnProperty('deviceID') && data[i].hasOwnProperty('value')) {
                     let knownDevice = this.dataStore.getDevice(data[i].deviceID);
                     if (knownDevice) {
-                        console.log('new value for ' + data[i].deviceID + ': ' + data[i].value);
-                        //knownDevice.setValue(data[i].value);
+                        this.dataStore.setDeviceValue(data[i].deviceID, data[i].value);
                     }
                 }
             }
