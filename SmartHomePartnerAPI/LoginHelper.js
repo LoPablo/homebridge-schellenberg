@@ -2,6 +2,7 @@ const crypt = require('crypto');
 const base64 = require('base-64');
 
 class LoginHelper {
+
     static calculateDigest(password, salt, sessionSalt) {
         const hashedPassword = this.getHash('sha256', password, salt);
         return this.getHash('sha1', hashedPassword, sessionSalt);

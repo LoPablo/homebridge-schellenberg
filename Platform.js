@@ -1,6 +1,5 @@
 const SchellenbergShutter = require('./Shutter');
-const SmartHomePartnerAPI = require("./SmartHomeAPI");
-
+const SmartHomePartnerAPI = require("./SmartHomePartnerAPI/SmartHomeAPI");
 
 let Accessory;
 let Service;
@@ -18,40 +17,25 @@ class SchellenbergPlatform {
         UUIDGen = api.hap.uuid;
         let self = this;
         this.log = log;
-        //Homebridge
         this.config = config;
         this.accessories = [];
         this.api = api;
-        this.refreshInt = null;
         this.homebridgeAccessories = new Map();
         this.deviceAccessories = new Map();
-        this.timestamp = 0;
-        this.languageTranslationVersion = this.config.languageTranslationVersion || 0;
-        this.compatibilityConfigurationVersion = this.compatibilityConfigurationVersion || 0;
-        this.log('Fetching Schellenberg devices.');
-        this.api = new SmartHomePartnerAPI(this.config.host, this.config.port, this.config.username, this.config.password, this.config.caPath, 'D19015', '2.9.0', '2.9', this.log);
-        api.eventEmitter.on('newDevice', (e) => {
-            console.log('EventNewDevice: ' + e.deviceID);
+        this.sApi = new SmartHomePartnerAPI(this.config.host, this.config.port, this.config.username, this.config.password, this.config.caPath, 'D19015', '2.9.0', '2.9', this.log);
+        this.sApi.on('newDevice', (e) => {
+            this.addAccessory(self.sApi.getDevice(e));
         });
-        api.login(() => {
+
+        this.sApi.login(() => {
+            let inDev = this.sApi.getAllDevices();
+            inDev.forEach((value, key) => {
+                self.log(key);
+                this.addAccessory(self.sApi.getDevice(key));
+            })
 
         });
-    }
 
-    setRollingTime() {
-        if (this.config.hasOwnProperty('rollingTimes')) {
-            this.log.debug('Configuring Rolling Times');
-            for (let j = 0; j < this.config.rollingTimes.length; j++) {
-                const currentTime = this.config.rollingTimes[j];
-                if (currentTime.hasOwnProperty('deviceID') && currentTime.hasOwnProperty('time')) {
-                    let deviceAccessory = this.deviceAccessories.get(currentTime.deviceID);
-                    if (deviceAccessory) {
-                        deviceAccessory.runStepShutterTime = currentTime.time / 100;
-                        this.log('Set Rolling Time for %s to %s', deviceAccessory.runStepShutterTime, currentTime.deviceID);
-                    }
-                }
-            }
-        }
     }
 
     registerPlatformAccessory(platformAccessory) {
@@ -71,7 +55,7 @@ class SchellenbergPlatform {
             return;
         }
         if (device.deviceTypServer === 'listboxActuatorRollingShutter') {
-            deviceAccessory = new SchellenbergShutter(this, this.config, homebridgeAccessory, device);
+            deviceAccessory = new SchellenbergShutter(this, this.config, homebridgeAccessory, device.deviceID);
             this.log('created Shutter');
         } else if (device.deviceTypServer === 'textActuatorSingleDevicePushNotification') {
             return;

@@ -2,11 +2,15 @@
 
 const fs = require('fs');
 const tls = require('tls');
+const events = require('events');
+const aLock = require('async-lock');
 
-class JSONSSLConnection {
+class JSONSSLConnection extends events {
     constructor(host, port, caPath, log) {
-        this.supQueue = [];
+        super();
+        this.lock = new aLock();
         this.currentRequest = null;
+        this.resolveQueue = [];
         this.socket = null;
         if (log) {
             this.log = log;
@@ -26,12 +30,10 @@ class JSONSSLConnection {
 
             }
         };
-        this.checkSocketConnection(() => {
-            this.callNext();
-        });
+        this.keepAliveHandle = null;
     }
 
-    checkSocketConnection(callback) {
+    checkSocketConnection() {
         const self = this;
         if (!this.socket) {
             this.log('no socket creating new one');
@@ -42,9 +44,6 @@ class JSONSSLConnection {
                     throw new Error('TLS Socket could not connect, client connected unauthorized');
                 } else {
                     this.log('client connected authorized');
-                    if (callback) {
-                        callback();
-                    }
                 }
             });
             this.socket.setEncoding('utf8');
@@ -53,91 +52,79 @@ class JSONSSLConnection {
                     self.chunk += data;
                 } else {
                     self.chunk += data;
-                    self.returnAndCallNext(self.chunk, null);
+
+                    if (self.resolveQueue.length === 0) {
+                        self.log(self.chunk);
+                        self.emit('data', self.chunk);
+                    } else {
+                        self.resolveQueue.shift()(self.chunk);
+                    }
                     self.chunk = '';
                 }
             });
             this.socket.on('timeout', () => {
-                this.returnAndCallNext(chunk, err);
+                setTimeout(() => {
+                    self.renewSocket()
+                }, 0);
             });
             this.socket.on('error', (err) => {
-                this.returnAndCallNext(chunk, err);
+                setTimeout(() => {
+                    self.renewSocket()
+                }, 0);
             });
             this.socket.on('end', () => {
-                this.supQueue = [];
-                this.socket.destroy();
-                this.socket = null;
+                setTimeout(() => {
+                    self.renewSocket()
+                }, 0);
             });
-        } else {
-            if (callback) {
-                callback();
-            }
+            this.socket.on('close', () => {
+                setTimeout(() => {
+                    self.renewSocket()
+                }, 0);
+            });
         }
     }
 
-    returnAndCallNext(data) {
-        if (this.supQueue.length > 0) {
-            const nextCallback = this.supQueue.shift().promiseCallback;
-            nextCallback(data);
-        }
-        this.currentRequest = null;
-        this.callNext();
-    }
-
-
-    callNext() {
-        const self = this;
-        (async function loop() {
-            while (self.supQueue.length < 1) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-            }
-            const nextRequest = self.supQueue[0].request;
-            self.log(nextRequest);
-            self.checkSocketConnection();
-            self.startNextTimeout();
-            self.currentRequest = nextRequest;
-            self.socket.write(nextRequest);
-            self.socket.write('\n');
-        })();
-    }
-
-    startNextTimeout() {
-        this.supQueue[0].timeoutHandle = setTimeout(this.supQueue[0].timeoutCallback, 2000);
-    }
-
-    disconnectSocketConnection() {
-        this.supQueue = [];
+    renewSocket() {
+        this.stopKeepAlive();
         this.socket.destroy();
         this.socket = null;
+        this.checkSocketConnection();
+        this.emit('newSocket');
     }
 
-    newRequest(reqData) {
-        const self = this;
-        return new Promise((resolve, reject) => {
-            const queobj = {
-                'normalReq': true,
-                'request': reqData,
-                'promiseCallback': null,
-                'timeoutCallback': null,
-                'timeoutHandle': null
-            };
-            const promCallback = (data) => {
-                clearTimeout(queobj.timeoutHandle);
-                resolve(data);
-            };
-            const timeCallback = (data) => {
-                self.log('timeout popped');
-                self.chunk = '';
-                self.supQueue.forEach(function (item, index, object) {
-                    if (item === queobj) {
-                        object.splice(index, 1);
-                    }
-                });
-                reject('no answer 2 seconds after request');
-            };
-            queobj.promiseCallback = promCallback;
-            queobj.timeoutCallback = timeCallback;
-            self.supQueue.push(queobj);
+    newSendOnlyRequest(reqData) {
+        this.lock.acquire('send', (done) => {
+            this.checkSocketConnection();
+            this.socket.write(reqData);
+            this.socket.write('\n');
+            this.log(reqData);
+            done();
+        });
+
+    }
+
+    startKeepAlive(aliveMessage) {
+        this.keepAliveHandle = setInterval(() => {
+            this.checkSocketConnection();
+            this.newSendOnlyRequest(aliveMessage);
+        }, 2000);
+    }
+
+    stopKeepAlive() {
+        clearInterval(this.keepAliveHandle);
+    }
+
+    newSendRecieveRequest(reqData, callback) {
+        this.lock.acquire('send', (done) => {
+            this.checkSocketConnection();
+            this.socket.write(reqData);
+            this.socket.write('\n');
+            this.log(reqData);
+            this.resolveQueue.push((data) => {
+                if (callback) callback(data);
+                done();
+            });
         });
     }
 }

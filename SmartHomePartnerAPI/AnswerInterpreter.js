@@ -3,6 +3,35 @@ class AnswerInterpreter {
         this.dataStore = dataStore;
     }
 
+    parseNewData(data) {
+        if (data) {
+            let parse = JSON.parse(data);
+            console.log(parse);
+            if (parse.hasOwnProperty('responseCode')) {
+                if (parse.responseCode === -1) {
+                    throw new Error('failed MessageType');
+                } else if (parse.responseCode === 0) {
+                    throw new Error('unkown MessageType');
+                } else if (parse.responseCode === 1) {
+                    throw new Error('not for me!');
+                } else if (parse.responseCode === 2) {
+                    if (parse.response.hasOwnProperty('currentTimestamp')) {
+                        this.dataStore.timestamp = parse.response.currentTimestamp;
+                    }
+                    if (parse.hasOwnProperty('responseMessage') && parse.hasOwnProperty('response')) {
+                        if (parse.responseMessage === 'newDeviceValue') {
+                            this.parseAndStoreNewDeviceValue(parse.response);
+                        } else {
+                            //TODO: IMPLEMENTATION NEEDED
+                        }
+                    }
+                }
+            } else {
+                throw new Error('failed JSON parse');
+            }
+        }
+    }
+
     parseAndCheck(data) {
         if (data) {
             let parse = JSON.parse(data);
@@ -13,6 +42,8 @@ class AnswerInterpreter {
                     throw new Error('unkown MessageType');
                 } else if (parse.responseCode === 1) {
                     return (parse);
+                } else if (parse.responseCode === 2) {
+                    throw new Error('not for me!');
                 }
             } else {
                 throw new Error('failed JSON parse');
@@ -91,21 +122,31 @@ class AnswerInterpreter {
         if (data.length > 0) {
             for (let i = 0; i < data.length; i++) {
                 if (data[i].hasOwnProperty('deviceID')) {
-                    this.dataStore.addDevice(data[i].deviceID, data[i], false);
+                    this.parseAndStoreNewDeviceInfo(data[i]);
                 }
             }
+        }
+    }
+
+    parseAndStoreNewDeviceInfo(data) {
+        if (data.hasOwnProperty('deviceID')) {
+            this.dataStore.addDevice(data.deviceID, data, false);
         }
     }
 
     parseAndStoreNewDeviceValues(data) {
         if (data.length > 0) {
             for (let i = 0; i < data.length; i++) {
-                if (data[i].hasOwnProperty('deviceID') && data[i].hasOwnProperty('value')) {
-                    let knownDevice = this.dataStore.getDevice(data[i].deviceID);
-                    if (knownDevice) {
-                        this.dataStore.setDeviceValue(data[i].deviceID, data[i].value);
-                    }
-                }
+                this.parseAndStoreNewDeviceValue(data[i])
+            }
+        }
+    }
+
+    parseAndStoreNewDeviceValue(data) {
+        if (data.hasOwnProperty('deviceID') && data.hasOwnProperty('value')) {
+            let knownDevice = this.dataStore.getDevice(data.deviceID);
+            if (knownDevice) {
+                this.dataStore.setDeviceValue(data.deviceID, data.value, false);
             }
         }
     }

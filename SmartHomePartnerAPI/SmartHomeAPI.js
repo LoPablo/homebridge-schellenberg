@@ -5,8 +5,9 @@ const AnswerInterpreter = require("./AnswerInterpreter");
 const SmartHomeDataStorage = require("./SmartHomeDataStorage");
 const events = require('events');
 
-class SmartHomeAPI {
+class SmartHomeAPI extends events {
     constructor(host, port, username, password, caPath, cSymbol, shcVersion, shApiVersion, log) {
+        super();
         this.host = host;
         this.port = port;
         this.username = username;
@@ -22,77 +23,79 @@ class SmartHomeAPI {
             this.log = console.log;
         }
 
-        this.eventEmitter = new events.EventEmitter();
-        this.dataStore = new SmartHomeDataStorage(this.eventEmitter);
+        this.dataStore = new SmartHomeDataStorage(this);
         this.interpreter = new AnswerInterpreter(this.dataStore);
         this.deviceInfo = null;
         this.localServerTimeLogin = null;
         this.shsVersion = null;
         this.sessionKey = null;
         this.SSLCon = null;
-        this.refreshHandle = null;
+
     }
 
     login(callback) {
         const self = this;
         if (this.SSLCon) {
             this.log.debug('SSLCon already existing. Terminating and creating new one');
-            this.SSLCon.disconnectSocketConnection();
+            this.SSLCon.renewSocket();
             this.SSLCon = null;
         }
         this.SSLCon = new JSONSSLConnection(this.host, this.port, this.caPath, this.log);
-
+        this.SSLCon.on('data', (data) => {
+            this.interpreter.parseNewData(data);
+        });
+        this.SSLCon.on('newSocket', () => {
+            this.login();
+        });
         let req = RequestFactory.getHeloMessage(this.username);
-        this.SSLCon.newRequest(req)
-            .then((data) => {
-                return self.interpreter.parseHelo(data);
-            }).catch((err) => {
-
-            })
-            .then((heloResponse) => {
-                let digest = LoginHelper.calculateDigest(self.password, heloResponse.salt, heloResponse.sessionSalt);
-                let neqReq = RequestFactory.getLoginMessage(self.username, digest, self.cSymbol, self.shcVersion, self.shAPIVersion);
-                return self.SSLCon.newRequest(neqReq);
-            }).catch((err) => {
-
-            })
-            .then((loginResponse) => {
-                let loginParse = self.interpreter.parseLogin(loginResponse);
-                self.deviceInfo = {
+        this.SSLCon.newSendRecieveRequest(req, (data) => {
+            let heloResponse = this.interpreter.parseHelo(data);
+            let digest = LoginHelper.calculateDigest(self.password, heloResponse.salt, heloResponse.sessionSalt);
+            let neqReq = RequestFactory.getLoginMessage(self.username, digest, self.cSymbol, self.shcVersion, self.shAPIVersion);
+            self.SSLCon.newSendRecieveRequest(neqReq, (data) => {
+                let loginParse = self.interpreter.parseLogin(data);
+                this.deviceInfo = {
                     "hardware": loginParse.hardware,
                     "macAddress": loginParse.MacAddress,
                     "shsVersion": loginParse.shsVersion
                 };
-                self.localServerTimeLogin = loginParse.localSHServerTime;
-                self.sessionKey = loginParse.sessionID;
-                self.refreshHandle = setInterval(() => {
-                    self.refreshDevices();
-                }, 2000);
-            }).catch((err) => {
-            console.log(err);
-        });
-    }
-
-    refreshDevices() {
-        const self = this;
-        if (!this.SSLCon) {
-            clearInterval(this.refreshHandle);
-            throw new Error('Missing Connection');
-        }
-        let req = RequestFactory.getAllNewInfosMessage(this.sessionKey, this.dataStore.timestamp, this.dataStore.compatibilityConfigurationVersion, this.dataStore.languageTranslationVersion);
-        this.SSLCon.newRequest(req)
-            .then((data) => {
-                self.interpreter.parseAndStoreNewInfos(data);
-            })
-            .catch((err) => {
-                self.log(err);
+                this.localServerTimeLogin = loginParse.localSHServerTime;
+                this.sessionKey = loginParse.sessionID;
+                let infoReq = RequestFactory.getAllNewInfosMessage(self.sessionKey, 0, 0, 0);
+                self.SSLCon.newSendRecieveRequest(infoReq, (data) => {
+                    this.interpreter.parseAndStoreNewInfos(data);
+                    this.SSLCon.startKeepAlive(RequestFactory.getKeepAliveMessage());
+                    this.dataStore.initFinished = true;
+                    if (callback) {
+                        setTimeout(callback, 1000);
+                    }
+                });
             });
+        });
+
     }
 
     getDevice(deviceID) {
         return this.dataStore.getDevice(deviceID);
     }
 
+    getDeviceValue(deviceID) {
+        this.log(this.dataStore.deviceValues);
+        this.log(deviceID);
+        return this.dataStore.getDeviceValue(deviceID);
+    }
+
+    getAllDevices() {
+        return this.dataStore.devices;
+    }
+
+    setDeviceValue(deviceID, value, callback) {
+        this.SSLCon.newSendRecieveRequest(RequestFactory.getSetDeviceValueMessage(this.sessionKey, deviceID, value), callback);
+    }
+
+    storeDeviceValue(deviceID, value, noEmit) {
+        this.dataStore.setDeviceValue(deviceID, value, noEmit);
+    }
 
 }
 

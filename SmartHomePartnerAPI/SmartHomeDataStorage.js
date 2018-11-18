@@ -5,7 +5,7 @@ class SmartHomeDataStorage {
         this.languageTranslation = new Map();
         this.compatibilityConfiguration = new Map();
         this.smartEventEmitter = smartEventEmitter;
-
+        this.initFinished = false;
         this.timestamp = 0;
         this.languageTranslationVersion = 0;
         this.compatibilityConfigurationVersion = 0;
@@ -15,12 +15,16 @@ class SmartHomeDataStorage {
         return this.deviceValues.get(deviceID);
     }
 
-    setDeviceValue(deviceID, value) {
+    setDeviceValue(deviceID, value, noEmit) {
+        //0 - STOP
+        //1  - UP
+        //2 - DOWN
         this.deviceValues.set(deviceID, value);
-        const e = {deviceID: deviceID, value: value};
-        this.smartEventEmitter.emit('newDeviceValue', e);
+        const e = {'deviceID': deviceID, 'value': value};
+        if (this.initFinished && !noEmit) {
+            this.smartEventEmitter.emit('newDeviceValue', e);
+        }
     }
-
 
     getDevice(deviceID) {
         return this.devices.get(deviceID);
@@ -34,18 +38,22 @@ class SmartHomeDataStorage {
         }
         this.devices.set(deviceID, deviceObj);
         const e = {deviceID: deviceID};
-        this.smartEventEmitter.emit('newDevice', e);
+        if (this.initFinished) {
+            this.smartEventEmitter.emit('newDevice', e);
+        }
     }
 
     removeDevice(deviceID) {
         let removedDevice = this.devices.get(deviceID);
         this.devices.delete(deviceID);
         const e = {deviceID: deviceID};
-        this.smartEventEmitter.emit('removedDevice', e);
+        if (this.initFinished) {
+            this.smartEventEmitter.emit('removedDevice', e);
+        }
     }
 
     getLanguageTranslation(languageKey) {
-
+        this.languageTranslation.get(languageKey);
     }
 
     addLanguageTranslation(languageKey, translation) {
