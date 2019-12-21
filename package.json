@@ -1,12 +1,13 @@
 {
   "name": "homebridge-schellenberg",
-  "version": "1.0.1",
-  "description": "Homebridge Schellenberg Shutter Control",
+  "version": "1.2.0",
+  "description": "Homebridge Schellenberg",
+  "private": true,
   "engines": {
     "homebridge": ">=0.3.2"
   },
   "scripts": {
-    "test": "echo \"Error: no tests\" && exit 1"
+    "test": "echo \"Error, no tests were specified\" && exit 1"
   },
   "repository": {
     "type": "git",
@@ -15,12 +16,14 @@
   "author": {
     "name": "Pascal Hartmann"
   },
-  "license": "BSD",
+  "license": "BSD-3-Clause",
   "keywords": [
-    "homebridge-plugin"
+    "homebridge-plugin",
+    "schellenberg",
+    "smartfirends",
+    "enexoma"
   ],
   "dependencies": {
-    "async-lock": "^1.1.3",
-    "base-64": "^0.1.0"
+    "schellenbergapi": "git+https://github.com/LoPablo/SchellenbergApi.git"
   }
 }
