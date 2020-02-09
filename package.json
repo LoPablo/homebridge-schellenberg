@@ -1,6 +1,6 @@
 {
   "name": "homebridge-schellenberg",
-  "version": "1.2.0",
+  "version": "1.2.5",
   "description": "Homebridge Schellenberg",
   "private": true,
   "engines": {
@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://lopablo@bitbucket.org/lopablo/homebridge-schellenberg.git"
+    "url": "git+https://github.com/LoPablo/homebridge-schellenberg.git"
   },
   "author": {
     "name": "Pascal Hartmann"

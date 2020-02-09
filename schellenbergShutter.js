@@ -34,11 +34,11 @@ class SchellenbergShutter {
         this.hadFirstPosition = false;
         this.positionState = 0;
         if (!this.homebridgeAccessory) {
-            this.log.debug('Creating new Accessory %s', this.device.deviceName);
+            this.log('Creating new Accessory %s', this.device.deviceName);
             this.homebridgeAccessory = new PlatformAccessory(this.device.deviceName, UUIDGen.generate(this.device.deviceID.toString()), Accessory.Categories.WINDOW_COVERING);
             platform.registerPlatformAccessory(this.homebridgeAccessory);
         } else {
-            this.log.debug('Existing Accessory found');
+            this.log('Existing Accessory found %s', this.device.deviceName);
             this.homebridgeAccessory.displayName = this.device.deviceName;
         }
         this.initServices();
@@ -77,10 +77,10 @@ class SchellenbergShutter {
         .on('set', (value, callback) => {
             this.targetPosition = value;
             if (!this.cameFromApi) {
-                this.log.debug('New TargetPosition %s for deviceID %s from Homekit, Ignoring next newDeviceValue', this.targetPosition, this.device.deviceID);
+                this.log('New TargetPosition %s for deviceID %s from Homekit, Ignoring next newDeviceValue', this.targetPosition, this.device.deviceID);
                 this.ignoreNext=true;
             } else {
-                this.log.debug('New TargetPosition %s for deviceID %s from API', this.targetPosition, this.device.deviceID);
+                this.log('New TargetPosition %s for deviceID %s from API', this.targetPosition, this.device.deviceID);
                 this.cameFromApi = false;
             }
             if (this.localInterval) {
@@ -91,7 +91,7 @@ class SchellenbergShutter {
         });
 
         this.homebridgeAccessory.on('identify', (paired, callback) => {
-            this.log('Identifying Shutter ith deviceID %s', this.device.deviceID);
+            this.log('Identifying Shutter with deviceID %s', this.device.deviceID);
             this.log.debug(this.device);
             callback();
         });
@@ -99,12 +99,11 @@ class SchellenbergShutter {
         this.platform.sApi.on('newDV', (data) => {
             if (data.deviceID && (data.value || data.value===0) && data.deviceID == this.device.deviceID) {
                 if (this.ignoreNext){
-                    this.log.debug('NewDeviceValue %s from Api for deviceID %s IGNORED because of HomeKit', data.value, data.deviceID);
+                    this.log('NewDeviceValue %s from Api for deviceID %s IGNORED because of HomeKit', data.value, data.deviceID);
                 }else{
                     if (this.hadFirstPosition) {
-                        this.log.debug('NewDeviceValue %s from Api for deviceID %s', data.value, data.deviceID);
+                        this.log('NewDeviceValue %s from Api for deviceID %s', data.value, data.deviceID);
                         if (data.value === 0) {
-                            this.log.debug('Penis');
                             this.cameFromApi = true;
                             this.service.setCharacteristic(Characteristic.TargetPosition, this.currentPosition);
                         } else if (data.value === 1) {
@@ -125,13 +124,13 @@ class SchellenbergShutter {
                             this.targetPosition = 0;
                             this.currentPosition = 0;
                         }
-                        this.log.debug('DeviceID %s had first position %s', this.device.deviceID, this.currentPosition);
+                        this.log('DeviceID %s had first position %s', this.device.deviceID, this.currentPosition);
                         this.hadFirstPosition = true;
                     }
                 }
             } else{
                 if (data.deviceID === this.device.deviceID) {
-                    this.log.debug('Missing newDV handle %s', JSON.stringify(data));
+                    this.log('Missing newDV handle %s', JSON.stringify(data));
                 }
             }
         });
@@ -148,7 +147,7 @@ class SchellenbergShutter {
     }
 
     shutterDrive() {
-        this.log.debug('New shutterDrive for %s to targetPosition %s from currentPositions', this.device.deviceID, this.targetPosition, this.currentPosition);
+        this.log('New shutterDrive for %s to targetPosition %s from currentPositions', this.device.deviceID, this.targetPosition, this.currentPosition);
         return setInterval(() => {
             let self = this;
             let preState = this.positionState;
@@ -165,14 +164,15 @@ class SchellenbergShutter {
             if (preState !== this.positionState) {
                 this.platform.sApi.handler.setDeviceValue(this.device.deviceID, this.positionState)
                 .then(() => {
-                    this.log.debug('ShutterDrive chose %s as direction, preState was %s', this.positionState, preState);
+                    this.log('ShutterDrive chose %s as direction, preState was %s', this.positionState, preState);
                 })
                 .catch((err) => {
-                    this.log.debug('ShutterDrive set device value had error %s', err);
+                    this.log('ShutterDrive set device value had error %s', err);
                     clearInterval(this.localInterval);
                 });
             }
             if ((self.positionState === 0) || (self.currentPosition === self.targetPosition && self.targetPosition === 100) || (self.currentPosition === self.targetPosition && self.targetPosition === 0)) {
+                this.service.setCharacteristic(Characteristic.PositionState, Characteristic.PositionState.STOPPED);
                 clearInterval(self.localInterval);
             } else if (self.positionState === 2) {
                 self.currentPosition -= 1;
@@ -189,7 +189,7 @@ class SchellenbergShutter {
                 const currentTime = this.platform.config.rollingTimes[j];
                 if (currentTime.deviceID && currentTime.time) {
                     if (currentTime.deviceID === this.device.deviceID) {
-                        this.log.debug('New RollingTime for deviceID %s is %s', this.device.deviceID, currentTime.time);
+                        this.log('New RollingTime for deviceID %s is %s', this.device.deviceID, currentTime.time);
                         this.runStepShutterTime = currentTime.time / 100;
                     }
                 }
