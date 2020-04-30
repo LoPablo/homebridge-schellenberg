@@ -1,4 +1,4 @@
-##NOT MAINTAINED ANYMORE
+## NOT MAINTAINED ANYMORE
 # homebridge-schellenberg
 Homebridge Plugin to connect to the Schellenberg Smart Home system. This plugin is a work in progress, so I guarantee [absolutely nothing](https://g.redditmedia.com/FuqGGUPh2r8D5y9joV5UzJLme-Q5KVUq-SQYaJrVOvE.gif?fm=mp4&mp4-fragmented=false&s=438fcd921c022aae00a9814e6f436dac). 
 
